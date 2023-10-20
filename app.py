@@ -17,7 +17,7 @@ import os
 import torch
 from tqdm import tqdm
 from safetensors.torch import load_file
-from huggingface_hub import hf_hub_download
+import gradio_user_history as gr_user_history
 
 from concurrent.futures import ThreadPoolExecutor
 import uuid
@@ -44,15 +44,16 @@ def randomize_seed_fn(seed: int, randomize_seed: bool) -> int:
         seed = random.randint(0, MAX_SEED)
     return seed
 
-def save_image(img):
+def save_image(img, profile: gr.OAuthProfile | None, metadata: dict):
     unique_name = str(uuid.uuid4()) + '.png'
     img.save(unique_name)
+    gr_user_history.save_image(label=metadata["prompt"], image=image, profile=profile, metadata=metadata)
     return unique_name
 
-def save_images(image_array):
+def save_images(image_array, profile: gr.OAuthProfile | None, metadata: dict):
     paths = []
     with ThreadPoolExecutor() as executor:
-        paths = list(executor.map(save_image, image_array))
+        paths = list(executor.map(save_image, image_array, [profile]*len(image_array), [metadata]*len(image_array)))
     return paths
 
 def generate(
@@ -64,7 +65,8 @@ def generate(
     num_inference_steps: int = 4,
     num_images: int = 4,
     randomize_seed: bool = False,
-    progress = gr.Progress(track_tqdm=True)
+    progress = gr.Progress(track_tqdm=True),
+    profile: gr.OAuthProfile | None = None,
 ) -> PIL.Image.Image:
     seed = randomize_seed_fn(seed, randomize_seed)
     torch.manual_seed(seed)
@@ -79,7 +81,7 @@ def generate(
         lcm_origin_steps=50,
         output_type="pil",
     ).images
-    paths = save_images(result)
+    paths = save_images(result, profile, metadata={"prompt": prompt, "seed": seed, "width": width, "height": height, "guidance_scale": guidance_scale, "num_inference_steps": num_inference_steps})
     print(time.time() - start_time)
     return paths, seed
 
@@ -160,6 +162,9 @@ with gr.Blocks(css="style.css") as demo:
                 visible=False,
             )
 
+    with gr.Accordion("Past generations", open=False):
+        gr_user_history.render()
+    
     gr.Examples(
         examples=examples,
         inputs=prompt,
