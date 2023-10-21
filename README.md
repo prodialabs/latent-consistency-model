@@ -1,7 +1,7 @@
 ---
 title: Latent Consistency Models
 emoji: ⚡️
-colorFrom: re
+colorFrom: red
 colorTo: purple
 sdk: gradio
 sdk_version: 3.48.0
