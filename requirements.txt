@@ -6,5 +6,6 @@ Pillow
 torch==2.0.1
 transformers
 opencv-python
-
+fastapi
+uvicorn
 git+https://huggingface.co/spaces/Wauplin/gradio-user-history
